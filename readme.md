@@ -5,14 +5,12 @@ End-to-end ETL пайплайн для сбора, обработки и виз�
 
 ## 🏗️ Архитектура
 
+A[Binance API] -->|Python Requests| B(Bronze: Parquet)
+B -->|Airflow DAG| C[Silver: PostgreSQL]
+C -->|SQL Window Functions| D[Gold: Metrics]
+D -->|SQLAlchemy| E[Streamlit Dashboard]
 
-graph LR
-    A[Binance API] -->|Python Requests| B(Bronze: Parquet)
-    B -->|Airflow DAG| C[Silver: PostgreSQL]
-    C -->|SQL Window Functions| D[Gold: Metrics]
-    D -->|SQLAlchemy| E[Streamlit Dashboard]
-
-🛠️ Технологический стек
+**🛠️ Технологический стек**
 Orchestration: Apache Airflow 2.7 (Docker)
 Storage: PostgreSQL 15
 Processing: Python (Pandas), SQL (Window Functions, CTE)
