@@ -4,6 +4,7 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from datetime import datetime, timedelta
 import pandas as pd
 import sys
+import os 
 sys.path.append("/opt/airflow/dags")
 from crypto_api_client import fetch_ohlcv
 
@@ -24,8 +25,13 @@ def extract_and_load_bronze(**kwargs):
         df = fetch_ohlcv(symbol=sym, interval="1d", limit=30)
         all_data.append(df)
     full_df = pd.concat(all_data, ignore_index=True)
-    full_df.to_parquet("/opt/airflow/data/bronze/crypto_raw.parquet", index=False)
-    print(f"✅ Extracted {len(full_df)} rows")
+    
+    # 🔑 АВТОМАТИЧЕСКОЕ СОЗДАНИЕ ПАПОК
+    output_path = "/opt/airflow/data/bronze/crypto_raw.parquet"
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    
+    full_df.to_parquet(output_path, index=False)
+    print(f"✅ Extracted {len(full_df)} rows to {output_path}")
 
 def load_to_silver(**kwargs):
     df = pd.read_parquet("/opt/airflow/data/bronze/crypto_raw.parquet")

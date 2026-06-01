@@ -1,67 +1,59 @@
 # =========================================================
-# СЕРВИСЫ (контейнеры, которые будут запущены)
+# Crypto Exchange DE Pipeline - Docker Compose
 # =========================================================
+
 services:
 
   # ---------------------------------------------------------
-  # 1️⃣ PostgreSQL — основная база данных для проекта
+  # 1️⃣ PostgreSQL — база данных проекта
   # ---------------------------------------------------------
   postgres-project:
-    image: postgres:15                      # Официальный образ PostgreSQL 15
-    container_name: de_postgres_project     # Удобное имя для контейнера
+    image: postgres:15
+    container_name: de_postgres_project
     environment:
-      # Учётные данные для БД (в продакшене — через .env файл!)
-      POSTGRES_USER: admin                  # Имя пользователя
-      POSTGRES_PASSWORD: secret             # Пароль
-      POSTGRES_DB: crypto_dw                # Имя базы данных
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: crypto_dw
     ports:
-      - "5432:5432"                         # Пробрасываем порт: host:container
+      - "5433:5432"
     volumes:
-      # 🎯 все .sql файлы в этой папке выполнятся автоматически
-      # при первом запуске контейнера (создание таблиц)
+      # Автоматическое выполнение SQL-скрипта при первом запуске
       - ./scripts/init_crypto.sql:/docker-entrypoint-initdb.d/init_crypto.sql
-      # Сохраняем данные между перезапусками (иначе при down -v всё удалится)
+      # Сохранение данных между перезапусками
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      # Проверка "здоровья" БД — Airflow не запустится, пока БД не готова
       test: ["CMD-SHELL", "pg_isready -U admin -d crypto_dw"]
-      interval: 10s      # Проверять каждые 10 секунд
-      timeout: 5s        # Таймаут одной проверки
-      retries: 5         # Максимум попыток
-      start_period: 30s  # Дать 30 сек на инициализацию перед первой проверкой
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # ---------------------------------------------------------
-  # 2️⃣ Airflow Webserver — веб-интерфейс (localhost:8080)
+  # 2️⃣ Airflow Webserver — веб-интерфейс
   # ---------------------------------------------------------
   airflow-webserver:
-    image: apache/airflow:2.7.1-python3.11  # Готовый образ (без сборки своего Dockerfile!)
+    image: apache/airflow:2.7.1-python3.11
     container_name: de_airflow_webserver
     depends_on:
-      # Ждём, пока PostgreSQL станет healthy (не просто запущен, а готов принимать соединения)
       postgres-project:
         condition: service_healthy
     ports:
-      - "8080:8080"                         # Веб-интерфейс Airflow
+      - "8080:8080"
     environment:
-      # Тип исполнителя задач (LocalExecutor = один узел, подходит для разработки)
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      # Строка подключения к БД (Airflow хранит в ней свои метаданные: DAG, логи, задачи)
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://admin:secret@postgres-project/crypto_dw
-      # Отключаем примеры DAG (они засоряют интерфейс)
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
-      # Секретный ключ для шифрования (в продакшене генерируй через: python -c 'import secrets; print(secrets.token_hex(16))')
       - AIRFLOW__WEBSERVER__SECRET_KEY=my_secret_key_for_dev_only
-      # Часовой пояс (полезно для логов)
       - AIRFLOW__CORE__DEFAULT_TIMEZONE=UTC
     volumes:
-      # Монтируем папки проекта внутрь контейнера
-      - ./dags:/opt/airflow/dags            # DAG-файлы
-      - ./scripts:/opt/airflow/scripts      # Вспомогательные скрипты
-      - ./data:/opt/airflow/data            # Папка для временных файлов (Parquet и т.п.)
-      - ./logs:/opt/airflow/logs            # Логи выполнения
-    # 🔑 ВАЖНО: сначала инициализируем БД Airflow, создаём admin-юзера, потом запускаем webserver
+      - ./dags:/opt/airflow/dags
+      - ./scripts:/opt/airflow/scripts
+      - ./data:/opt/airflow/data
+      - ./logs:/opt/airflow/logs
+    # 🔑 АВТОМАТИЧЕСКОЕ СОЗДАНИЕ ПАПОК + ИНИЦИАЛИЗАЦИЯ + ЗАПУСК
     command: >
       bash -c "
+        mkdir -p /opt/airflow/data/bronze &&
         airflow db migrate &&
         airflow users create --username admin --password admin --firstname Admin --lastname Admin --role Admin --email admin@example.com || true &&
         airflow webserver"
@@ -70,10 +62,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s  # Airflow долго стартует впервые — даём 60 сек
+      start_period: 60s
 
   # ---------------------------------------------------------
-  # 3️⃣ Airflow Scheduler — планировщик задач (работает в фоне)
+  # 3️⃣ Airflow Scheduler — планировщик задач
   # ---------------------------------------------------------
   airflow-scheduler:
     image: apache/airflow:2.7.1-python3.11
@@ -84,22 +76,22 @@ services:
       airflow-webserver:
         condition: service_healthy
     environment:
-      # Те же настройки, что и у webserver (должны совпадать!)
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://admin:secret@postgres-project/crypto_dw
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
     volumes:
-      # Те же монтирования, чтобы видеть те же DAG'и
       - ./dags:/opt/airflow/dags
       - ./scripts:/opt/airflow/scripts
       - ./data:/opt/airflow/data
       - ./logs:/opt/airflow/logs
-    command: scheduler  # Просто запускаем планировщик
+    # 🔑 АВТОМАТИЧЕСКОЕ СОЗДАНИЕ ПАПОК + ЗАПУСК SCHEDULER
+    command: >
+      bash -c "
+        mkdir -p /opt/airflow/data/bronze &&
+        airflow scheduler"
 
 # =========================================================
 # ТОМА (постоянное хранилище данных)
 # =========================================================
 volumes:
-  # Именованный том — данные PostgreSQL сохраняются, даже если удалить контейнер
-  # (но удалятся при docker-compose down -v)
   postgres_data:
