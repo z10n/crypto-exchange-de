@@ -44,8 +44,7 @@ Port: 5432
 
 **##4. Запуск дашборда**
 ⚠️ Важно: Мы используем порт 5433, чтобы избежать конфликтов с локальным PostgreSQL.
-bash
-12
+
 Откройте http://localhost:8501.
 📊 Метрики и трансформации
 Daily Return: (close - prev_close) / prev_close
@@ -64,6 +63,7 @@ Avg Volume (7d): Скользящее среднее объема торгов
 Добавление тестов данных через Great Expectations.
 
 ## 📷 Результаты
+
 ![Airflow DAG](assets/dag_graph.png)
 ![Dashboard](assets/dashboard.png)
 ![Data](assets/db_data.png)
