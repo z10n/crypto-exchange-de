@@ -1,6 +1,6 @@
 # 📈 Crypto Exchange Data Pipeline
 
-End-to-end ETL пайплайн для сбора, обработки и визуализации рыночных данных криптовалют.
+End-to-end ETL пайплайн для сбора, обработки и визуализации рыночных данных криптовалют, дополненный локальным ИИ-ассистентом для автоматизации DE-задач.
 Проект демонстрирует навыки построения надежных данных конвейеров, работы с таймсериями и автоматизации процессов.
 
 ## 🏗️ Архитектура
@@ -11,15 +11,19 @@ graph LR
     B -->|Airflow DAG| C[Silver: PostgreSQL]
     C -->|SQL Window Functions| D[Gold: Metrics]
     D -->|SQLAlchemy| E[Streamlit Dashboard]
+    F[Local LLM Ollama] -->|LangChain| G{AI Agent}
+    G -->|SQL Tool| C
+    G -->|Airflow API Tool| H[Status Check]
 ```
 ## 🛠️ Технологический стек
 
 *   **Orchestration**: Apache Airflow 2.7 (Docker)
 *   **Storage**: PostgreSQL 15
 *   **Processing**: Python (Pandas), SQL (Window Functions, CTE)
+*   **AI Automation**: LangChain, Ollama (Llama 3.2), Custom Tools
 *   **Visualization**: Streamlit, Plotly
 *   **Infrastructure**: Docker, Docker Compose
-*   **Key Concepts**: ETL, Idempotency, Data Quality, Star Schema, Time Series Analysis
+*   **Key Concepts**: ETL, Idempotency, Data Quality, Star Schema, Time Series Analysis, Local LLM Inference
 
 **🚀 Быстрый старт**
 **1. Запуск инфраструктуры**
@@ -61,6 +65,19 @@ Daily Return: (close - prev_close) / prev_close
 Volatility (7d): STDDEV(close) OVER (ROWS 6 PRECEDING)
 Avg Volume (7d): Скользящее среднее объема торгов
 
+## 🤖 Локальный ИИ-ассистент
+Ассистент работает полностью оффлайн (без облачных API), умеет писать SQL к БД и проверять статус пайплайнов в Airflow.
+Требования: Ollama + langchain + langchain-ollama
+```bash
+ollama pull llama3.2
+pip install langchain langchain-openai langchain-community langchain-ollama requests
+python scripts/ai_agents/agent_sql.py
+```
+### Примеры вопросов:
+   * Сколько строк в gold_daily_metrics?
+   * Покажи топ-3 актива по волатильности
+   * Проверь статус DAG crypto_etl_pipeline
+
 ## ✅ Data Quality Checks
 
 Пайплайн включает автоматические проверки:
@@ -74,6 +91,7 @@ Avg Volume (7d): Скользящее среднее объема торгов
 * Использование dbt для управления трансформациями.
 * Деплой дашборда в облако (Streamlit Cloud).
 * Добавление тестов данных через Great Expectations.
+* Добавление алертов в Telegram при падении DAG
 
 ## 📷 Результаты
 
