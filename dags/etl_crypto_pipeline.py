@@ -8,15 +8,57 @@ import os
 sys.path.append("/opt/airflow/dags")
 from crypto_api_client import fetch_ohlcv
 
+# 🚨 TELEGRAM ALERT CALLBACK (вставь ПОСЛЕ импортов)
+def send_telegram_alert(context):
+    import os
+    import requests
+    from datetime import datetime
+
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+    if not token or not chat_id:
+        print("⚠️ Telegram credentials not set. Skipping alert.")
+        return
+
+    dag_id = context['dag'].dag_id
+    task_id = context['task_instance'].task_id
+    exec_date = context.get('logical_date') or context.get('execution_date')
+    exception = context.get('exception')
+    error_msg = str(exception) if exception else "Unknown error"
+
+    text = (
+        f"🚨 *DAG FAILED*\n"
+        f"📦 DAG: `{dag_id}`\n"
+        f"🔧 Task: `{task_id}`\n"
+        f"🕐 Date: `{exec_date.strftime('%Y-%m-%d %H:%M UTC')}`\n"
+        f"❌ Error: `{error_msg[:200]}`"
+    )
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
+
+    try:
+        requests.post(url, json=payload, timeout=10)
+        print("✅ Telegram alert sent.")
+    except Exception as e:
+        print(f"❌ Alert failed: {e}")
+
 default_args = {
     "owner": "de_student",
     "retries": 2,
     "retry_delay": timedelta(minutes=5),
     "start_date": datetime(2023, 1, 1),
-    "catchup": False
+    "on_failure_callback": send_telegram_alert,
 }
 
-dag = DAG("crypto_etl_pipeline", default_args=default_args, schedule_interval="@daily")
+dag = DAG(
+    dag_id='etl_crypto_pipeline',
+    default_args=default_args,
+    schedule_interval='@daily',  
+    catchup=False,               
+    start_date=datetime(2024, 1, 1)
+)
 
 def extract_and_load_bronze(**kwargs):
     symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
