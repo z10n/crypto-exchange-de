@@ -85,13 +85,21 @@ python scripts/ai_agents/agent_sql.py
 * Проверка на отрицательную волатильность.
 * Валидация цен (`close > 0`).
 
+## 🚨 Мониторинг и ИИ-автоматизация
+- **Telegram-алерты**: Автоматические уведомления при падении DAG через `on_failure_callback` с контекстом задачи, логами ошибок и временной меткой.
+- **Локальный ИИ-агент**: Оффлайн-ассистент на базе LangChain + Ollama с кастомными инструментами:
+  - 🔹 `SQL Tool` → запросы к PostgreSQL на естественном языке (`gold_daily_metrics`, `silver_ohlcv`)
+  - 🔹 `Airflow API Tool` → проверка статуса DAG в реальном времени через REST API
+  - Полная изоляция: отсутствие внешних облачных зависимостей, корпоративный уровень приватности данных.
+- **Запуск агента**: `python scripts/ai_agents/agent_sql.py`
+
 ## 🔮 Future Improvements
 
 * Интеграция с Kafka для real-time данных.
 * Использование dbt для управления трансформациями.
 * Деплой дашборда в облако (Streamlit Cloud).
 * Добавление тестов данных через Great Expectations.
-* Добавление алертов в Telegram при падении DAG
+
 
 ## 📷 Результаты
 
@@ -99,3 +107,4 @@ python scripts/ai_agents/agent_sql.py
 ![Dashboard](assets/dashboard.png)
 ![Data](assets/db_data.png)
 ![AI Agent](assets/ai_agent.png)
+![Telegram alert](assets/alert.png)
