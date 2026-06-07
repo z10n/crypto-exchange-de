@@ -98,3 +98,4 @@ python scripts/ai_agents/agent_sql.py
 ![Airflow DAG](assets/dag_graph.png)
 ![Dashboard](assets/dashboard.png)
 ![Data](assets/db_data.png)
+![AI Agent](assets/ai_agent.png)
